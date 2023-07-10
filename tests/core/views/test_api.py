@@ -3,6 +3,7 @@ import hashlib
 from time import time
 
 import pytest
+from bolt11.decode import decode
 
 from lnbits import bolt11
 from lnbits.core.crud import get_standalone_payment, update_payment_details
@@ -113,7 +114,7 @@ async def test_create_invoice_custom_expiry(client, inkey_headers_to):
     )
     assert response.status_code == 201
     invoice = response.json()
-    bolt11_invoice = bolt11.decode(invoice["payment_request"])
+    bolt11_invoice = decode(invoice["payment_request"])
     assert bolt11_invoice.expiry == expiry_seconds
 
 
@@ -319,7 +320,7 @@ async def test_create_invoice_with_description_hash(client, inkey_headers_to):
     )
     invoice = response.json()
 
-    invoice_bolt11 = bolt11.decode(invoice["payment_request"])
+    invoice_bolt11 = decode(invoice["payment_request"])
     assert invoice_bolt11.description_hash == descr_hash
     assert invoice_bolt11.description is None
     return invoice
@@ -336,7 +337,7 @@ async def test_create_invoice_with_unhashed_description(client, inkey_headers_to
     )
     invoice = response.json()
 
-    invoice_bolt11 = bolt11.decode(invoice["payment_request"])
+    invoice_bolt11 = decode(invoice["payment_request"])
     assert invoice_bolt11.description_hash == descr_hash
     assert invoice_bolt11.description is None
     return invoice

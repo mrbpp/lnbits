@@ -1,11 +1,9 @@
 import asyncio
-import datetime
 from http import HTTPStatus
 
+from bolt11.decode import decode
 from fastapi import HTTPException
 from loguru import logger
-
-from lnbits import bolt11
 
 from .. import core_app
 from ..crud import get_standalone_payment
@@ -24,9 +22,8 @@ async def api_public_payment_longpolling(payment_hash):
         return {"status": "paid"}
 
     try:
-        invoice = bolt11.decode(payment.bolt11)
-        expiration = datetime.datetime.fromtimestamp(invoice.date + invoice.expiry)
-        if expiration < datetime.datetime.now():
+        invoice = decode(payment.bolt11)
+        if invoice.has_expired():
             return {"status": "expired"}
     except:
         raise HTTPException(

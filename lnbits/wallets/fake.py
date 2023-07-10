@@ -2,13 +2,15 @@ import asyncio
 import hashlib
 import random
 from datetime import datetime
-from typing import AsyncGenerator, Dict, Optional
+from typing import AsyncGenerator, Optional
 
+from bolt11.decode import decode
+from bolt11.encode import encode
+from bolt11.types import Bolt11, MilliSatoshi
 from loguru import logger
 
 from lnbits.settings import settings
 
-from ..bolt11 import Invoice, decode, encode
 from .base import (
     InvoiceResponse,
     PaymentResponse,
@@ -43,42 +45,43 @@ class FakeWallet(Wallet):
         unhashed_description: Optional[bytes] = None,
         **kwargs,
     ) -> InvoiceResponse:
-        data: Dict = {
-            "out": False,
-            "amount": amount * 1000,
-            "currency": "bc",
-            "privkey": self.privkey,
-            "memo": memo,
-            "description_hash": b"",
-            "description": "",
-            "fallback": None,
-            "expires": kwargs.get("expiry"),
-            "timestamp": datetime.now().timestamp(),
-            "route": None,
-            "tags_set": [],
-        }
+
+        tags = {}
+
         if description_hash:
-            data["tags_set"] = ["h"]
-            data["description_hash"] = description_hash
+            tags["h"] = description_hash.decode()
         elif unhashed_description:
-            data["tags_set"] = ["d"]
-            data["description_hash"] = hashlib.sha256(unhashed_description).digest()
+            tags["h"] = hashlib.sha256(unhashed_description).digest()
         else:
-            data["tags_set"] = ["d"]
-            data["memo"] = memo
-            data["description"] = memo
-        randomHash = (
+            tags["d"] = memo
+
+        if kwargs.get("expiry"):
+            tags["x"] = kwargs.get("expiry")
+
+        # random hash
+        checking_id = (
             self.privkey[:6]
             + hashlib.sha256(str(random.getrandbits(256)).encode()).hexdigest()[6:]
         )
-        data["paymenthash"] = randomHash
-        payment_request = encode(data)
-        checking_id = randomHash
+
+        tags["p"] = checking_id
+
+        bolt11 = Bolt11(
+            currency="bc",
+            amount=MilliSatoshi(amount * 1000),
+            timestamp=int(datetime.now().timestamp()),
+            tags=tags,
+        )
+
+        payment_request = encode(bolt11, self.privkey)
 
         return InvoiceResponse(True, checking_id, payment_request)
 
     async def pay_invoice(self, bolt11: str, _: int) -> PaymentResponse:
         invoice = decode(bolt11)
+
+        if not invoice.payment_hash:
+            return PaymentResponse(ok=False, error_message="No payment hash.")
 
         if invoice.payment_hash[:6] == self.privkey[:6]:
             await self.queue.put(invoice)
@@ -96,5 +99,6 @@ class FakeWallet(Wallet):
 
     async def paid_invoices_stream(self) -> AsyncGenerator[str, None]:
         while True:
-            value: Invoice = await self.queue.get()
+            value: Bolt11 = await self.queue.get()
+            assert value.payment_hash, "No payment hash."
             yield value.payment_hash

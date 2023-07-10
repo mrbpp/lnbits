@@ -1,6 +1,6 @@
+from bolt11.decode import decode
 from mock import AsyncMock
 
-from lnbits import bolt11
 from lnbits.wallets.base import PaymentResponse, PaymentStatus, StatusResponse
 from lnbits.wallets.fake import FakeWallet
 
@@ -56,7 +56,7 @@ if is_fake:
     def pay_invoice_side_effect(
         payment_request: str, fee_limit_msat: int
     ) -> PaymentResponse:
-        invoice = bolt11.decode(payment_request)
+        invoice = decode(payment_request)
         return PaymentResponse(
             True,  # ok
             invoice.payment_hash,  # checking_id (i.e. payment_hash)
