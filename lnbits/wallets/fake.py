@@ -2,7 +2,7 @@ import asyncio
 import hashlib
 import random
 from datetime import datetime
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Union
 
 from bolt11.decode import decode
 from bolt11.encode import encode
@@ -43,20 +43,21 @@ class FakeWallet(Wallet):
         memo: Optional[str] = None,
         description_hash: Optional[bytes] = None,
         unhashed_description: Optional[bytes] = None,
-        **kwargs,
+        expiry: Optional[int] = None,
+        **_,
     ) -> InvoiceResponse:
 
-        tags = {}
+        tags: dict[str, Union[str, int]] = {}
 
         if description_hash:
             tags["h"] = description_hash.decode()
         elif unhashed_description:
-            tags["h"] = hashlib.sha256(unhashed_description).digest()
+            tags["h"] = hashlib.sha256(unhashed_description).hexdigest()
         else:
-            tags["d"] = memo
+            tags["d"] = memo or ""
 
-        if kwargs.get("expiry"):
-            tags["x"] = kwargs.get("expiry")
+        if expiry:
+            tags["x"] = expiry
 
         # random hash
         checking_id = (
