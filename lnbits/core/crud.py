@@ -6,7 +6,6 @@ from uuid import UUID, uuid4
 
 import shortuuid
 
-from lnbits import bolt11
 from lnbits.db import Connection, Database, Filters, Page
 from lnbits.extension_manager import InstallableExtension
 from lnbits.settings import AdminSettings, EditableSettings, SuperSettings, settings
@@ -508,6 +507,7 @@ async def create_payment(
     memo: str,
     fee: int = 0,
     preimage: Optional[str] = None,
+    expiry: Optional[datetime.datetime] = None,
     pending: bool = True,
     extra: Optional[Dict] = None,
     webhook: Optional[str] = None,
@@ -516,13 +516,6 @@ async def create_payment(
     # todo: add this when tests are fixed
     # previous_payment = await get_wallet_payment(wallet_id, payment_hash, conn=conn)
     # assert previous_payment is None, "Payment already exists"
-
-    try:
-        invoice = bolt11.decode(payment_request)
-        expiration_date = datetime.datetime.fromtimestamp(invoice.date + invoice.expiry)
-    except:
-        # assume maximum bolt11 expiry of 31 days to be on the safe side
-        expiration_date = datetime.datetime.now() + datetime.timedelta(days=31)
 
     await (conn or db).execute(
         """
@@ -545,7 +538,7 @@ async def create_payment(
             if extra and extra != {} and type(extra) is dict
             else None,
             webhook,
-            db.datetime_to_timestamp(expiration_date),
+            db.datetime_to_timestamp(expiry) if expiry else None,
         ),
     )
 
