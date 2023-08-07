@@ -196,25 +196,27 @@ class CreateInvoiceData(BaseModel):
 
 
 async def api_payments_create_invoice(data: CreateInvoiceData, wallet: Wallet):
+    description_hash = None
+    unhashed_description = None
     if data.description_hash or data.unhashed_description:
-        try:
-            description_hash = (
-                bytes.fromhex(data.description_hash) if data.description_hash else b""
-            )
-            unhashed_description = (
-                bytes.fromhex(data.unhashed_description)
-                if data.unhashed_description
-                else b""
-            )
-        except ValueError:
-            raise HTTPException(
-                status_code=HTTPStatus.BAD_REQUEST,
-                detail="'description_hash' and 'unhashed_description' must be a valid hex strings",
-            )
+        if data.description_hash:
+            try:
+                description_hash = bytes.fromhex(data.description_hash)
+            except ValueError:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail="'description_hash' must be a valid hex strings",
+                )
+        if data.unhashed_description:
+            try:
+                unhashed_description = bytes.fromhex(data.unhashed_description)
+            except ValueError:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail="'unhashed_description' must be a valid hex strings",
+                )
         memo = ""
     else:
-        description_hash = b""
-        unhashed_description = b""
         memo = data.memo or settings.lnbits_site_title
 
     if data.unit == "sat":
