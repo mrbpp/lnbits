@@ -37,7 +37,7 @@ python-dotenv = "^1.0.0"
 websocket-client = "^1.6.1"
 secp256k1 = "^0.14.0"
 pycryptodomex = "^3.18.0"
-bolt11 = "^1.0.3"
+bolt11 = "^1.0.4"
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "^6.0.0"
