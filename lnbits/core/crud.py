@@ -517,7 +517,10 @@ async def create_payment(
     # previous_payment = await get_wallet_payment(wallet_id, payment_hash, conn=conn)
     # assert previous_payment is None, "Payment already exists"
 
-    invoice = bolt11.decode(payment_request)
+    try:
+        invoice = bolt11.decode(payment_request)
+    except Exception as e:
+        raise Exception(f"Invalid payment request: '{payment_request}' with error {e}")
 
     if invoice.expiry:
         expiration_date = datetime.datetime.fromtimestamp(invoice.date + invoice.expiry)
