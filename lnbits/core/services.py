@@ -5,12 +5,12 @@ from typing import Dict, List, Optional, Tuple, TypedDict
 from urllib.parse import parse_qs, urlparse
 
 import httpx
-from bolt11.decode import decode
 from fastapi import Depends, WebSocket
 from lnurl import LnurlErrorResponse
 from lnurl import decode as decode_lnurl
 from loguru import logger
 
+from lnbits import bolt11
 from lnbits.db import Connection
 from lnbits.decorators import WalletTypeInfo, require_admin_key
 from lnbits.helpers import url_for
@@ -86,7 +86,7 @@ async def create_invoice(
     if not ok or not payment_request or not checking_id:
         raise InvoiceFailure(error_message or "unexpected backend error.")
 
-    invoice = decode(payment_request)
+    invoice = bolt11.decode(payment_request)
     if not invoice.payment_hash:
         raise InvoiceFailure("no payment_hash.")
 
@@ -124,16 +124,16 @@ async def pay_invoice(
     If the payment is unsuccessful, we delete the temporary payment.
     If the payment is still in flight, we hope that some other process will regularly check for the payment.
     """
-    invoice = decode(payment_request)
+    invoice = bolt11.decode(payment_request)
 
-    if not invoice.amount or not invoice.amount > 0:
+    if not invoice.amount_msat or not invoice.amount_msat > 0:
         raise ValueError("Amountless invoices not supported.")
-    if max_sat and invoice.amount > max_sat * 1000:
+    if max_sat and invoice.amount_msat > max_sat * 1000:
         raise ValueError("Amount in invoice is too high.")
     if not invoice.payment_hash:
         raise ValueError("No payment_hash provided.")
 
-    fee_reserve_msat = fee_reserve(invoice.amount)
+    fee_reserve_msat = fee_reserve(invoice.amount_msat)
     async with (db.reuse_conn(conn) if conn else db.connect()) as conn:
         temp_id = invoice.payment_hash
         internal_id = f"internal_{invoice.payment_hash}"
@@ -151,7 +151,7 @@ async def pay_invoice(
             wallet_id=wallet_id,
             payment_request=payment_request,
             payment_hash=invoice.payment_hash,
-            amount=-invoice.amount,
+            amount=-invoice.amount_msat,
             memo=description or invoice.description or "",
             extra=extra,
         )
@@ -170,7 +170,7 @@ async def pay_invoice(
             )
             assert internal_invoice is not None
             if (
-                internal_invoice.amount != invoice.amount
+                internal_invoice.amount != invoice.amount_msat
                 or internal_invoice.bolt11 != payment_request.lower()
             ):
                 raise PaymentFailure("Invalid invoice.")

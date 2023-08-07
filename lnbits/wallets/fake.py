@@ -69,8 +69,8 @@ class FakeWallet(Wallet):
 
         bolt11 = Bolt11(
             currency="bc",
-            amount=MilliSatoshi(amount * 1000),
-            timestamp=int(datetime.now().timestamp()),
+            amount_msat=MilliSatoshi(amount * 1000),
+            date=int(datetime.now().timestamp()),
             tags=tags,
         )
 

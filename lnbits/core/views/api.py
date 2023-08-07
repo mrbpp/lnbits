@@ -10,7 +10,6 @@ from urllib.parse import ParseResult, parse_qs, urlencode, urlparse, urlunparse
 import async_timeout
 import httpx
 import pyqrcode
-from bolt11.decode import decode
 from fastapi import (
     Body,
     Depends,
@@ -28,7 +27,7 @@ from pydantic.fields import Field
 from sse_starlette.sse import EventSourceResponse
 from starlette.responses import RedirectResponse, StreamingResponse
 
-from lnbits import lnurl
+from lnbits import bolt11, lnurl
 from lnbits.core.helpers import (
     migrate_extension_database,
     stop_extension_background_work,
@@ -244,7 +243,7 @@ async def api_payments_create_invoice(data: CreateInvoiceData, wallet: Wallet):
         except Exception as exc:
             raise exc
 
-    invoice = decode(payment_request)
+    invoice = bolt11.decode(payment_request)
 
     lnurl_response: Union[None, bool, str] = None
     if data.lnurl_callback:
@@ -374,11 +373,11 @@ async def api_payments_pay_lnurl(
             detail=f"{domain} did not return a payment request.",
         )
 
-    invoice = decode(params["pr"])
-    if invoice.amount != data.amount:
+    invoice = bolt11.decode(params["pr"])
+    if invoice.amount_msat != data.amount:
         raise HTTPException(
             status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"{domain} returned an invalid invoice. Expected {data.amount} msat, got {invoice.amount}.",
+            detail=f"{domain} returned an invalid invoice. Expected {data.amount} msat, got {invoice.amount_msat}.",
         )
 
     if invoice.description_hash != data.description_hash:
@@ -636,7 +635,7 @@ async def api_payments_decode(data: DecodePayment):
             url = lnurl.decode(payment_str)
             return {"domain": url}
         else:
-            invoice = decode(payment_str)
+            invoice = bolt11.decode(payment_str)
             return JSONResponse(invoice.json)
     except:
         return JSONResponse(

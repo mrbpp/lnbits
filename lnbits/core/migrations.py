@@ -1,8 +1,9 @@
 import datetime
 
-from bolt11.decode import decode
 from loguru import logger
 from sqlalchemy.exc import OperationalError
+
+from lnbits import bolt11
 
 
 async def m000_create_migrations_table(db):
@@ -230,12 +231,12 @@ async def m007_set_invoice_expiries(db):
             checking_id,
         ) in enumerate(rows):
             try:
-                invoice = decode(payment_request)
+                invoice = bolt11.decode(payment_request)
                 if invoice.expiry is None:
                     continue
 
                 expiration_date = datetime.datetime.fromtimestamp(
-                    invoice.timestamp + invoice.expiry
+                    invoice.date + invoice.expiry
                 )
                 logger.info(
                     f"Migration: {i+1}/{len(rows)} setting expiry of invoice {invoice.payment_hash} to {expiration_date}"

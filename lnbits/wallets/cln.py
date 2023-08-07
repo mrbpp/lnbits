@@ -8,9 +8,9 @@ import random
 from functools import partial, wraps
 from typing import AsyncGenerator, Optional
 
-from bolt11.decode import decode
 from loguru import logger
 
+from lnbits import bolt11 as lnbits_bolt11
 from lnbits.settings import settings
 
 from .base import (
@@ -117,7 +117,7 @@ class CoreLightningWallet(Wallet):
 
     async def pay_invoice(self, bolt11: str, fee_limit_msat: int) -> PaymentResponse:
 
-        invoice = decode(bolt11)
+        invoice = lnbits_bolt11.decode(bolt11)
         if not invoice.payment_hash:
             return PaymentResponse(
                 False,
@@ -131,12 +131,12 @@ class CoreLightningWallet(Wallet):
         if previous_payment.paid:
             return PaymentResponse(False, None, None, None, "invoice already paid")
 
-        if not invoice.amount or invoice.amount <= 0:
+        if not invoice.amount_msat or invoice.amount_msat <= 0:
             return PaymentResponse(
                 False, None, None, None, "CLN 0 amount invoice not supported"
             )
 
-        fee_limit_percent = fee_limit_msat / invoice.amount * 100
+        fee_limit_percent = fee_limit_msat / invoice.amount_msat * 100
 
         payload = {
             "bolt11": bolt11,
