@@ -628,18 +628,19 @@ class DecodePayment(BaseModel):
 
 
 @core_app.post("/api/v1/payments/decode", status_code=HTTPStatus.OK)
-async def api_payments_decode(data: DecodePayment):
+async def api_payments_decode(data: DecodePayment) -> JSONResponse:
     payment_str = data.data
     try:
         if payment_str[:5] == "LNURL":
             url = lnurl.decode(payment_str)
-            return {"domain": url}
+            return JSONResponse({"domain": url})
         else:
             invoice = bolt11.decode(payment_str)
-            return JSONResponse(invoice.json)
-    except:
+            return JSONResponse(json.loads(invoice.json))
+    except Exception as exc:
         return JSONResponse(
-            {"message": "Failed to decode"}, status_code=HTTPStatus.BAD_REQUEST
+            {"message": f"Failed to decode: {str(exc)}"},
+            status_code=HTTPStatus.BAD_REQUEST,
         )
 
 
