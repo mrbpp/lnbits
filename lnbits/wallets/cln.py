@@ -8,9 +8,10 @@ import random
 from functools import partial, wraps
 from typing import AsyncGenerator, Optional
 
+from bolt11.decode import decode as bolt11_decode
+from bolt11.exceptions import Bolt11Exception
 from loguru import logger
 
-from lnbits import bolt11 as lnbits_bolt11
 from lnbits.settings import settings
 
 from .base import (
@@ -117,15 +118,10 @@ class CoreLightningWallet(Wallet):
 
     async def pay_invoice(self, bolt11: str, fee_limit_msat: int) -> PaymentResponse:
 
-        invoice = lnbits_bolt11.decode(bolt11)
-        if not invoice.payment_hash:
-            return PaymentResponse(
-                False,
-                None,
-                None,
-                None,
-                "CLN does not support payment without payment_hash",
-            )
+        try:
+            invoice = bolt11_decode(bolt11)
+        except Bolt11Exception as exc:
+            return PaymentResponse(False, None, None, None, str(exc))
 
         previous_payment = await self.get_payment_status(invoice.payment_hash)
         if previous_payment.paid:

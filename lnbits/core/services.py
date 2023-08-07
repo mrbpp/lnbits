@@ -87,8 +87,6 @@ async def create_invoice(
         raise InvoiceFailure(error_message or "unexpected backend error.")
 
     invoice = bolt11.decode(payment_request)
-    if not invoice.payment_hash:
-        raise InvoiceFailure("no payment_hash.")
 
     amount_msat = amount * 1000
     await create_payment(
@@ -130,8 +128,6 @@ async def pay_invoice(
         raise ValueError("Amountless invoices not supported.")
     if max_sat and invoice.amount_msat > max_sat * 1000:
         raise ValueError("Amount in invoice is too high.")
-    if not invoice.payment_hash:
-        raise ValueError("No payment_hash provided.")
 
     fee_reserve_msat = fee_reserve(invoice.amount_msat)
     async with (db.reuse_conn(conn) if conn else db.connect()) as conn:
