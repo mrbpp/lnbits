@@ -7,6 +7,7 @@ from sqlite3 import Row
 from typing import Callable, Dict, List, Optional
 
 from ecdsa import SECP256k1, SigningKey
+from fastapi import Query
 from lnurl import encode as lnurl_encode
 from loguru import logger
 from pydantic import BaseModel
@@ -285,10 +286,10 @@ class CreateLnurl(BaseModel):
 
 
 class CreateInvoice(BaseModel):
-    amount: int
     unit: str = "sat"
     internal: bool = False
     out: bool = True
+    amount: float = Query(None, ge=0)
     memo: Optional[str] = None
     description_hash: Optional[str] = None
     unhashed_description: Optional[str] = None
