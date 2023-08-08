@@ -273,7 +273,7 @@ class Callback(BaseModel):
 
 
 class DecodePayment(BaseModel):
-    payment_str: str
+    data: str
 
 
 class CreateLnurl(BaseModel):

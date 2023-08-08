@@ -618,7 +618,7 @@ async def api_lnurlscan(code: str, wallet: WalletTypeInfo = Depends(get_key_type
 
 @core_app.post("/api/v1/payments/decode", status_code=HTTPStatus.OK)
 async def api_payments_decode(data: DecodePayment, response: Response):
-    payment_str = data.payment_str
+    payment_str = data.data
     try:
         if payment_str[:5] == "LNURL":
             url = lnurl.decode(payment_str)
