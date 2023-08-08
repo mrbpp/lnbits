@@ -196,6 +196,7 @@ class CreateInvoiceData(BaseModel):
 
 
 async def api_payments_create_invoice(data: CreateInvoiceData, wallet: Wallet):
+    extra = data.extra or {}
     if data.description_hash or data.unhashed_description:
         try:
             description_hash = (
@@ -223,6 +224,7 @@ async def api_payments_create_invoice(data: CreateInvoiceData, wallet: Wallet):
         assert data.unit is not None, "unit not set"
         price_in_sats = await fiat_amount_as_satoshis(data.amount, data.unit)
         amount = price_in_sats
+        extra.update({"fiat_amount": data.amount, "fiat_currency": data.unit})
 
     async with db.connect() as conn:
         try:
