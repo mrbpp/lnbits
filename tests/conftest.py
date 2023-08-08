@@ -8,8 +8,8 @@ from httpx import AsyncClient
 from lnbits.app import create_app
 from lnbits.commands import migrate_databases
 from lnbits.core.crud import create_account, create_wallet
-from lnbits.core.services import update_wallet_balance
 from lnbits.core.models import CreateInvoice
+from lnbits.core.services import update_wallet_balance
 from lnbits.core.views.api import api_payments_create_invoice
 from lnbits.db import Database
 from lnbits.settings import settings
