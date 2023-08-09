@@ -11,6 +11,7 @@ import async_timeout
 import httpx
 import pyqrcode
 from fastapi import (
+    APIRouter,
     Body,
     Depends,
     Header,
@@ -28,6 +29,7 @@ from sse_starlette.sse import EventSourceResponse
 from starlette.responses import RedirectResponse, StreamingResponse
 
 from lnbits import bolt11, lnurl
+from lnbits.core.db import core_app_extra, db
 from lnbits.core.helpers import (
     migrate_extension_database,
     stop_extension_background_work,
@@ -58,7 +60,6 @@ from lnbits.utils.exchange_rates import (
     satoshis_amount_as_fiat,
 )
 
-from .. import core_app, core_app_extra, db
 from ..crud import (
     add_installed_extension,
     create_tinyurl,
@@ -88,13 +89,15 @@ from ..services import (
 )
 from ..tasks import api_invoice_listeners
 
+api_router = APIRouter()
 
-@core_app.get("/api/v1/health", status_code=HTTPStatus.OK)
+
+@api_router.get("/api/v1/health", status_code=HTTPStatus.OK)
 async def health():
     return
 
 
-@core_app.get("/api/v1/wallet")
+@api_router.get("/api/v1/wallet")
 async def api_wallet(wallet: WalletTypeInfo = Depends(get_key_type)):
     if wallet.wallet_type == 0:
         return {
@@ -106,7 +109,7 @@ async def api_wallet(wallet: WalletTypeInfo = Depends(get_key_type)):
         return {"name": wallet.wallet.name, "balance": wallet.wallet.balance_msat}
 
 
-@core_app.put("/api/v1/wallet/{new_name}")
+@api_router.put("/api/v1/wallet/{new_name}")
 async def api_update_wallet(
     new_name: str, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
@@ -118,7 +121,7 @@ async def api_update_wallet(
     }
 
 
-@core_app.get(
+@api_router.get(
     "/api/v1/payments",
     name="Payment List",
     summary="get list of payments",
@@ -148,7 +151,7 @@ async def api_payments(
     )
 
 
-@core_app.get(
+@api_router.get(
     "/api/v1/payments/paginated",
     name="Payment List",
     summary="get paginated list of payments",
@@ -304,7 +307,7 @@ async def api_payments_pay_invoice(bolt11: str, wallet: Wallet):
     }
 
 
-@core_app.post(
+@api_router.post(
     "/api/v1/payments",
     status_code=HTTPStatus.CREATED,
 )
@@ -339,7 +342,7 @@ class CreateLNURLData(BaseModel):
     description: Optional[str] = None
 
 
-@core_app.post("/api/v1/payments/lnurl")
+@api_router.post("/api/v1/payments/lnurl")
 async def api_payments_pay_lnurl(
     data: CreateLNURLData, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
@@ -452,7 +455,7 @@ async def subscribe_wallet_invoices(request: Request, wallet: Wallet):
         return
 
 
-@core_app.get("/api/v1/payments/sse")
+@api_router.get("/api/v1/payments/sse")
 async def api_payments_sse(
     request: Request, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -464,7 +467,7 @@ async def api_payments_sse(
 
 
 # TODO: refactor this route into a public and admin one
-@core_app.get("/api/v1/payments/{payment_hash}")
+@api_router.get("/api/v1/payments/{payment_hash}")
 async def api_payment(payment_hash, X_Api_Key: Optional[str] = Header(None)):
     # We use X_Api_Key here because we want this call to work with and without keys
     # If a valid key is given, we also return the field "details", otherwise not
@@ -508,7 +511,7 @@ async def api_payment(payment_hash, X_Api_Key: Optional[str] = Header(None)):
     return {"paid": not payment.pending, "preimage": payment.preimage}
 
 
-@core_app.get("/api/v1/lnurlscan/{code}")
+@api_router.get("/api/v1/lnurlscan/{code}")
 async def api_lnurlscan(code: str, wallet: WalletTypeInfo = Depends(get_key_type)):
     try:
         url = lnurl.decode(code)
@@ -627,7 +630,7 @@ class DecodePayment(BaseModel):
     data: str
 
 
-@core_app.post("/api/v1/payments/decode", status_code=HTTPStatus.OK)
+@api_router.post("/api/v1/payments/decode", status_code=HTTPStatus.OK)
 async def api_payments_decode(data: DecodePayment, response: Response):
     payment_str = data.data
     try:
@@ -657,7 +660,7 @@ class Callback(BaseModel):
     callback: str = Query(...)
 
 
-@core_app.post("/api/v1/lnurlauth")
+@api_router.post("/api/v1/lnurlauth")
 async def api_perform_lnurlauth(
     callback: Callback, wallet: WalletTypeInfo = Depends(require_admin_key)
 ):
@@ -669,7 +672,7 @@ async def api_perform_lnurlauth(
     return ""
 
 
-@core_app.get("/api/v1/currencies")
+@api_router.get("/api/v1/currencies")
 async def api_list_currencies_available():
     if len(settings.lnbits_allowed_currencies) > 0:
         return [
@@ -686,7 +689,7 @@ class ConversionData(BaseModel):
     to: str = Query("usd")
 
 
-@core_app.post("/api/v1/conversion")
+@api_router.post("/api/v1/conversion")
 async def api_fiat_as_sats(data: ConversionData):
     output = {}
     if data.from_ == "sat":
@@ -704,7 +707,7 @@ async def api_fiat_as_sats(data: ConversionData):
         return output
 
 
-@core_app.get("/api/v1/qrcode/{data}", response_class=StreamingResponse)
+@api_router.get("/api/v1/qrcode/{data}", response_class=StreamingResponse)
 async def img(request: Request, data):
     qr = pyqrcode.create(data)
     stream = BytesIO()
@@ -728,7 +731,7 @@ async def img(request: Request, data):
 # UNIVERSAL WEBSOCKET MANAGER
 
 
-@core_app.websocket("/api/v1/ws/{item_id}")
+@api_router.websocket("/api/v1/ws/{item_id}")
 async def websocket_connect(websocket: WebSocket, item_id: str):
     await websocketManager.connect(websocket)
     try:
@@ -738,7 +741,7 @@ async def websocket_connect(websocket: WebSocket, item_id: str):
         websocketManager.disconnect(websocket)
 
 
-@core_app.post("/api/v1/ws/{item_id}")
+@api_router.post("/api/v1/ws/{item_id}")
 async def websocket_update_post(item_id: str, data: str):
     try:
         await websocketUpdater(item_id, data)
@@ -747,7 +750,7 @@ async def websocket_update_post(item_id: str, data: str):
         return {"sent": False, "data": data}
 
 
-@core_app.get("/api/v1/ws/{item_id}/{data}")
+@api_router.get("/api/v1/ws/{item_id}/{data}")
 async def websocket_update_get(item_id: str, data: str):
     try:
         await websocketUpdater(item_id, data)
@@ -756,7 +759,7 @@ async def websocket_update_get(item_id: str, data: str):
         return {"sent": False, "data": data}
 
 
-@core_app.post("/api/v1/extension")
+@api_router.post("/api/v1/extension")
 async def api_install_extension(
     data: CreateExtension, user: User = Depends(check_admin)
 ):
@@ -812,7 +815,7 @@ async def api_install_extension(
         )
 
 
-@core_app.delete("/api/v1/extension/{ext_id}")
+@api_router.delete("/api/v1/extension/{ext_id}")
 async def api_uninstall_extension(ext_id: str, user: User = Depends(check_admin)):
     installable_extensions = await InstallableExtension.get_installable_extensions()
 
@@ -852,7 +855,7 @@ async def api_uninstall_extension(ext_id: str, user: User = Depends(check_admin)
         )
 
 
-@core_app.get(
+@api_router.get(
     "/api/v1/extension/{ext_id}/releases", dependencies=[Depends(check_admin)]
 )
 async def get_extension_releases(ext_id: str):
@@ -869,7 +872,7 @@ async def get_extension_releases(ext_id: str):
         )
 
 
-@core_app.get(
+@api_router.get(
     "/api/v1/extension/release/{org}/{repo}/{tag_name}",
     dependencies=[Depends(check_admin)],
 )
@@ -890,7 +893,7 @@ async def get_extension_release(org: str, repo: str, tag_name: str):
         )
 
 
-@core_app.delete(
+@api_router.delete(
     "/api/v1/extension/{ext_id}/db",
     dependencies=[Depends(check_admin)],
 )
@@ -919,7 +922,7 @@ async def delete_extension_db(ext_id: str):
 # TINYURL
 
 
-@core_app.post("/api/v1/tinyurl")
+@api_router.post("/api/v1/tinyurl")
 async def api_create_tinyurl(
     url: str, endless: bool = False, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -936,7 +939,7 @@ async def api_create_tinyurl(
         )
 
 
-@core_app.get("/api/v1/tinyurl/{tinyurl_id}")
+@api_router.get("/api/v1/tinyurl/{tinyurl_id}")
 async def api_get_tinyurl(
     tinyurl_id: str, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -954,7 +957,7 @@ async def api_get_tinyurl(
         )
 
 
-@core_app.delete("/api/v1/tinyurl/{tinyurl_id}")
+@api_router.delete("/api/v1/tinyurl/{tinyurl_id}")
 async def api_delete_tinyurl(
     tinyurl_id: str, wallet: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -973,7 +976,7 @@ async def api_delete_tinyurl(
         )
 
 
-@core_app.get("/t/{tinyurl_id}")
+@api_router.get("/t/{tinyurl_id}")
 async def api_tinyurl(tinyurl_id: str):
     try:
         tinyurl = await get_tinyurl(tinyurl_id)

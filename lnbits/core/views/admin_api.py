@@ -6,7 +6,7 @@ from subprocess import Popen
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import Body, Depends
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import FileResponse
 from starlette.exceptions import HTTPException
 
@@ -21,11 +21,13 @@ from lnbits.decorators import check_admin, check_super_user
 from lnbits.server import server_restart
 from lnbits.settings import AdminSettings, EditableSettings, settings
 
-from .. import core_app, core_app_extra
+# from .. import core_app, core_app_extra
 from ..crud import delete_admin_settings, get_admin_settings, update_admin_settings
 
+admin_router = APIRouter()
 
-@core_app.get("/admin/api/v1/audit", dependencies=[Depends(check_admin)])
+
+@admin_router.get("/admin/api/v1/audit", dependencies=[Depends(check_admin)])
 async def api_auditor():
     try:
         delta, node_balance, total_balance = await get_balance_delta()
@@ -41,7 +43,7 @@ async def api_auditor():
         )
 
 
-@core_app.get("/admin/api/v1/settings/")
+@admin_router.get("/admin/api/v1/settings/")
 async def api_get_settings(
     user: User = Depends(check_admin),
 ) -> Optional[AdminSettings]:
@@ -49,7 +51,7 @@ async def api_get_settings(
     return admin_settings
 
 
-@core_app.put(
+@admin_router.put(
     "/admin/api/v1/settings/",
     status_code=HTTPStatus.OK,
 )
@@ -64,7 +66,7 @@ async def api_update_settings(
     return {"status": "Success"}
 
 
-@core_app.delete(
+@admin_router.delete(
     "/admin/api/v1/settings/",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(check_super_user)],
@@ -74,7 +76,7 @@ async def api_delete_settings() -> None:
     server_restart.set()
 
 
-@core_app.get(
+@admin_router.get(
     "/admin/api/v1/restart/",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(check_super_user)],
@@ -84,7 +86,7 @@ async def api_restart_server() -> dict[str, str]:
     return {"status": "Success"}
 
 
-@core_app.put(
+@admin_router.put(
     "/admin/api/v1/topup/",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(check_super_user)],
@@ -109,7 +111,7 @@ async def api_topup_balance(
     return {"status": "Success"}
 
 
-@core_app.get(
+@admin_router.get(
     "/admin/api/v1/backup/",
     status_code=HTTPStatus.OK,
     dependencies=[Depends(check_super_user)],

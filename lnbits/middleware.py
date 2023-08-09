@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from lnbits.core import core_app_extra
+from lnbits.core.db import core_app_extra
 from lnbits.helpers import template_renderer
 from lnbits.settings import settings
 

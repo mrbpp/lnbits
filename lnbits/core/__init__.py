@@ -1,15 +1,15 @@
-from fastapi.routing import APIRouter
+from fastapi import APIRouter
 
-from lnbits.core.models import CoreAppExtra
-from lnbits.db import Database
-
-db = Database("database")
+from .views.admin_api import *  # noqa: F403
+from .views.api import *  # noqa: F403
+from .views.generic import *  # noqa: F403
+from .views.public_api import *  # noqa: F403
 
 core_app: APIRouter = APIRouter()
 
-core_app_extra: CoreAppExtra = CoreAppExtra()
 
-from .views.admin_api import *  # noqa: F401,F403
-from .views.api import *  # noqa: F401,F403
-from .views.generic import *  # noqa: F401,F403
-from .views.public_api import *  # noqa: F401,F403
+def init_core_routers(app):
+    app.include_router(generic_router)  # noqa: F405
+    app.include_router(public_router)  # noqa: F405
+    app.include_router(api_router)  # noqa: F405
+    app.include_router(admin_router)  # noqa: F405
