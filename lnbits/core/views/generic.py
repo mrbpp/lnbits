@@ -10,7 +10,7 @@ from loguru import logger
 from pydantic.types import UUID4
 from starlette.responses import HTMLResponse, JSONResponse
 
-from lnbits.core import db
+from lnbits.core.db import db
 from lnbits.core.helpers import to_valid_user_id
 from lnbits.core.models import User
 from lnbits.decorators import check_admin, check_user_exists

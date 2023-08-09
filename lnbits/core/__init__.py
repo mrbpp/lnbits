@@ -1,10 +1,13 @@
 from fastapi import APIRouter
 
-from .db import *  # noqa: F403
-from .views.admin_api import *  # noqa: F403
-from .views.api import *  # noqa: F403
-from .views.generic import *  # noqa: F403
-from .views.public_api import *  # noqa: F403
+from .db import core_app_extra, db  # noqa: F401
+from .views.admin_api import admin_router
+from .views.api import api_router
+from .views.generic import update_user_extension  # noqa: F401
+from .views.generic import (  # this compat is needed for usermanager extension
+    generic_router,
+)
+from .views.public_api import public_router
 
 # backwards compatibility for extensions
 core_app: APIRouter = APIRouter()
