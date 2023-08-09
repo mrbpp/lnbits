@@ -3,10 +3,7 @@ max-line-length = 150
 exclude = lnbits/wallets/lnd_grpc_files/, lnbits/extensions/
 ignore =
     # E203 whitespace before ':' black does not like it
-    E203,
-    # E402: module level import not at top of file
-    # needed for https://github.com/lnbits/lnbits/pull/1876
-    E402,
+    E203
     # W503: line break before binary operator
     W503,
     # F821: undefined name - should be addressed in future PR
