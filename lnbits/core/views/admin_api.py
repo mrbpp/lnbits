@@ -21,7 +21,7 @@ from lnbits.decorators import check_admin, check_super_user
 from lnbits.server import server_restart
 from lnbits.settings import AdminSettings, EditableSettings, settings
 
-# from .. import core_app, core_app_extra
+from .. import core_app_extra
 from ..crud import delete_admin_settings, get_admin_settings, update_admin_settings
 
 admin_router = APIRouter()
